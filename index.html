@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Wearable Health Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #ecf0f1 0%, #d5d8dc 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #2c3e50;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #e74c3c;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      animation: fadeIn 1s ease-in;
+      font-size: 20px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .tile-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .tile {
+      background: #fff;
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100px;
+    }
+    .tile:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+    .input-tile { background: linear-gradient(45deg, #f93a3a, #ffac02); color: #000000; }
+    .good-tile { background: linear-gradient(45deg, #27ae60, #2ecc71); color: #fff; }
+    .moderate-tile { background: linear-gradient(45deg, #f1c40f, #f39c12); color: #fff; }
+    .severe-tile { background: linear-gradient(45deg, #e74c3c, #c0392b); color: #fff; }
+    .list-box {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 10px;
+      flex-grow: 1;
+      overflow: auto;
+      margin-top: 10px;
+    }
+    .list-item {
+      background: #2ecc71;
+      color: #fff;
+      padding: 8px;
+      margin-bottom: 5px;
+      border-radius: 5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .list-item:nth-child(even) {
+      background: #27ae60;
+    }
+    .list-item:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    canvas { border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+    table { border: 1px solid #ddd; border-radius: 10px; overflow: hidden; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    button {
+      background: linear-gradient(45deg, #3498db, #2980b9);
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #2980b9, #3498db);
+    }
+    .tooltip {
+      visibility: hidden;
+      width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tile:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    .split-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .info-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #e74c3c;
+      color: #fff;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .info-button:hover {
+      background: #c0392b;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 80%;
+      max-width: 600px;
+    }
+    .popup-content {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .close-btn:hover {
+      background: #c0392b;
+    }
+    @media (max-width: 768px) {
+      .tile-row, .split-container { grid-template-columns: 1fr; }
+      .container { padding: 10px; }
+      .info-button { top: 10px; right: 10px; }
+      .popup { width: 90%; }
+    }
+  </style>
+</head>
+<body class="container">
+  <button class="info-button" onclick="document.getElementById('infoPopup').style.display='block'">i</button>
+  <div id="infoPopup" class="popup">
+    <button class="close-btn" onclick="document.getElementById('infoPopup').style.display='none'">X</button>
+    <div class="popup-content">
+      <h2>Health Details Definitions</h2>
+      <p><strong>Steps:</strong> Total steps walked daily. Helps track physical activity and promotes cardiovascular health.</p>
+      <p><strong>Distance (km):</strong> Distance covered daily. Indicates exercise intensity and supports fitness goals.</p>
+      <p><strong>Calories:</strong> Energy burned daily. Aids in weight management and energy balance assessment.</p>
+      <p><strong>Weight (kg):</strong> Body weight. Monitors overall health and guides dietary adjustments.</p>
+      <p><strong>BMI:</strong> Body Mass Index. Assesses body fat and risk for obesity-related conditions.</p>
+      <p><strong>Heart Rate (bpm):</strong> Beats per minute. Reflects cardiovascular health and stress levels.</p>
+      <p><strong>Mobile Usage (hours):</strong> Screen time daily. Impacts mental health and sleep quality.</p>
+      <p><strong>Stress Level (%):</strong> Perceived stress. Indicates mental well-being and need for relaxation.</p>
+      <p><strong>Water Intake (liters):</strong> Daily water consumption. Supports hydration and organ function.</p>
+      <p><strong>Hydration Balance (%):</strong> Hydration status. Ensures proper bodily functions and energy levels.</p>
+      <p><strong>Blood Pressure (mmHg):</strong> Systolic/Diastolic pressure. Monitors heart health and risk of hypertension.</p>
+      <p><strong>Activity Intensity (%):</strong> Proportion of active time. Gauges fitness level and energy expenditure.</p>
+      <p><strong>Cardiovascular Risk (%):</strong> Heart disease risk. Guides preventive health measures.</p>
+      <p><strong>Sleep Quality (%):</strong> Sleep effectiveness. Affects recovery and cognitive performance.</p>
+      <p><strong>Cognitive Load Index (%):</strong> Mental fatigue level. Helps manage work-life balance.</p>
+      <p><strong>Energy Efficiency (%):</strong> Calorie-to-activity ratio. Optimizes exercise routines.</p>
+      <p><strong>Posture Health Score (%):</strong> Spinal health indicator. Supports ergonomic adjustments.</p>
+      <p><strong>Resilience Factor (%):</strong> Recovery potential. Enhances stress coping ability.</p>
+      <p><strong>Vitality Pulse (%):</strong> Overall vitality. Reflects holistic health status.</p>
+      <p><strong>Emotional Resilience Index (%):</strong> Emotional recovery capacity. Supports mental resilience.</p>
+      <p><strong>Tablet Alerts:</strong> Notifications for medication doses. Ensures timely intake and health management.</p>
+      <p><strong>Prescription Alerts:</strong> Warnings for expiry or refill. Prevents lapses in treatment.</p>
+    </div>
+  </div>
+  <h1 style="font-size: 32px;">Smart Wearable Health Dashboard</h1>
+  <div id="error" class="text-red-500 mb-4"></div>
+  <h2 class="text-xl font-semibold mb-2">Enter Your Health Data</h2>
+  <div class="tile-row">
+    <div class="tile input-tile">
+      <label class="block">Steps:</label>
+      <input type="number" id="steps" class="border p-2 w-full" placeholder="e.g., 7000" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Distance (km):</label>
+      <input type="number" id="distance" class="border p-2 w-full" step="0.01" placeholder="e.g., 5.5" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Weight (kg):</label>
+      <input type="number" id="weight" class="border p-2 w-full" step="0.1" placeholder="e.g., 70" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">BMI:</label>
+      <input type="number" id="bmi" class="border p-2 w-full" step="0.1" placeholder="e.g., 22.5" required>
+    </div>
+  </div>
+  <div class="tile-row">
+    <div class="tile input-tile">
+      <label class="block">Heart Rate (bpm):</label>
+      <input type="number" id="heart_rate" class="border p-2 w-full" placeholder="e.g., 72" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Mobile Usage (hours):</label>
+      <input type="number" id="mobile_usage" class="border p-2 w-full" step="0.1" placeholder="e.g., 4.5" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Water Intake (liters):</label>
+      <input type="number" id="water_intake" class="border p-2 w-full" step="0.1" placeholder="e.g., 1.5" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Systolic BP (mmHg):</label>
+      <input type="number" id="systolic_bp" class="border p-2 w-full" placeholder="e.g., 120" required>
+    </div>
+  </div>
+  <div class="tile-row">
+    <div class="tile input-tile">
+      <label class="block">Diastolic BP (mmHg):</label>
+      <input type="number" id="diastolic_bp" class="border p-2 w-full" placeholder="e.g., 80" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Very Active Minutes:</label>
+      <input type="number" id="very_active_minutes" class="border p-2 w-full" placeholder="e.g., 30" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Fairly Active Minutes:</label>
+      <input type="number" id="fairly_active_minutes" class="border p-2 w-full" placeholder="e.g., 20" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Lightly Active Minutes:</label>
+      <input type="number" id="lightly_active_minutes" class="border p-2 w-full" placeholder="e.g., 60" required>
+    </div>
+  </div>
+  <div class="tile-row">
+    <div class="tile input-tile">
+      <label class="block">Sedentary Minutes:</label>
+      <input type="number" id="sedentary_minutes" class="border p-2 w-full" placeholder="e.g., 600" required>
+    </div>
+    <div class="tile input-tile">
+      <label class="block">Upload Prescription:</label>
+      <input type="file" id="prescriptionUpload" class="border p-2 w-full" accept=".txt">
+    </div>
+  </div>
+  <button id="saveData" class="bg-green-500 text-white p-2 rounded mt-4">Save Data</button>
+  <div class="tile-row mt-4">
+    <div class="tile">
+      <h2 class="text-xl font-semibold">Steps Over Time</h2>
+      <canvas id="stepsChart"></canvas>
+    </div>
+    <div class="tile">
+      <h2 class="text-xl font-semibold">Calories Over Time</h2>
+      <canvas id="caloriesChart"></canvas>
+    </div>
+  </div>
+  <div class="tile-row mt-4">
+    <div class="tile calculated-tile">
+      <h2 class="text-xl font-semibold">Health Recommendations</h2>
+      <div class="list-box" id="recommendations"></div>
+    </div>
+    <div class="tile calculated-tile">
+      <h2 class="text-xl font-semibold">Latest Data</h2>
+      <table id="dataTable" class="w-full border-collapse border">
+        <thead>
+          <tr>
+            <th class="border p-2">Timestamp</th>
+            <th class="border p-2">Steps</th>
+            <th class="border p-2">Calories</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tile-row mt-4" id="healthDetailsRow"></div>
+  <div class="split-container mt-4">
+    <div class="tile calculated-tile">
+      <h2 class="text-xl font-semibold">Health Trend Predictions</h2>
+      <div class="list-box" id="trendPredictions"></div>
+    </div>
+    <div>
+      <div class="tile calculated-tile mb-4">
+        <h2 class="text-xl font-semibold">Tablet Alerts</h2>
+        <p id="tabletAlerts" class="pl-5"></p>
+      </div>
+      <div class="tile calculated-tile">
+        <h2 class="text-xl font-semibold">Prescription Alerts</h2>
+        <p id="prescriptionAlerts" class="pl-5"></p>
+      </div>
+      <div class="tile calculated-tile mt-4">
+        <h2 class="text-xl font-semibold">Prescription Details</h2>
+        <p id="prescriptionText" class="pl-5"></p>
+        <div id="prescriptionDetails" class="pl-5 mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let stepsChart, caloriesChart;
+    let dataHistory = JSON.parse(localStorage.getItem('healthData')) || [];
+    let prescription = null;
+
+    // Simple client-side calorie prediction
+    function predictCalories(steps, weight) {
+      return Math.max(0, (steps * 0.045) + (weight * 1.5));
+    }
+
+    // Existing metrics
+    function calculateActivityIntensity(veryActive, fairlyActive, lightlyActive, sedentary) {
+      const totalActive = veryActive + fairlyActive + lightlyActive;
+      const totalTime = totalActive + sedentary;
+      return totalTime > 0 ? Math.min(100, (totalActive / totalTime) * 100) : 0;
+    }
+
+    function calculateHydrationBalance(waterIntake) {
+      const idealIntake = 2.0;
+      return Math.min(100, (waterIntake / idealIntake) * 100);
+    }
+
+    function calculateCardioRisk(heartRate, systolicBP, diastolicBP) {
+      const baseRisk = (heartRate > 80 ? (heartRate - 80) * 0.5 : 0) +
+                       (systolicBP > 120 ? (systolicBP - 120) * 0.2 : 0) +
+                       (diastolicBP > 80 ? (diastolicBP - 80) * 0.3 : 0);
+      return Math.min(100, baseRisk);
+    }
+
+    function estimateSleepQuality(sedentary) {
+      const maxSedentary = 720;
+      return Math.max(0, 100 - (sedentary / maxSedentary * 100));
+    }
+
+    // New innovative metrics
+    function calculateCognitiveLoadIndex(mobileUsage, sedentary) {
+      const baseLoad = (mobileUsage || 0) * 5 + (sedentary / 60) * 2;
+      return Math.min(100, baseLoad);
+    }
+
+    function calculateEnergyEfficiency(calories, veryActive, fairlyActive, lightlyActive) {
+      const totalActive = veryActive + fairlyActive + lightlyActive;
+      return totalActive > 0 ? Math.min(100, (calories / totalActive) * 10) : 0;
+    }
+
+    function calculatePostureHealthScore(sedentary, activityIntensity) {
+      const postureRisk = (sedentary / 60) * 0.5;
+      return Math.max(0, 100 - (postureRisk - (activityIntensity * 0.5)));
+    }
+
+    function calculateResilienceFactor(stressLevel, sleepQuality) {
+      return Math.max(0, 100 - ((stressLevel + (100 - sleepQuality)) / 2));
+    }
+
+    function calculateVitalityPulse(heartRate, waterIntake, activityIntensity) {
+      const vitality = (100 - (heartRate > 80 ? heartRate - 80 : 0) * 0.5) +
+                       (waterIntake / 2.0 * 50) +
+                       (activityIntensity * 0.5);
+      return Math.min(100, vitality);
+    }
+
+    // New metric: Emotional Resilience Index
+    function calculateEmotionalResilienceIndex(stressLevel, sleepQuality, moodImpact) {
+      return Math.max(0, (100 - stressLevel) * 0.4 + sleepQuality * 0.3 + (100 - moodImpact) * 0.3);
+    }
+
+    // Advanced trend prediction with weighted moving average and decay
+    function calculateAdvancedTrendPrediction(dataHistory, field, window = 3, decay = 0.7) {
+      if (dataHistory.length < 2) return 0;
+      let weightedSum = 0;
+      let weightSum = 0;
+      for (let i = dataHistory.length - 1; i >= Math.max(0, dataHistory.length - window); i--) {
+        const weight = Math.pow(decay, dataHistory.length - 1 - i);
+        weightedSum += dataHistory[i][field] * weight;
+        weightSum += weight;
+      }
+      const currentTrend = weightedSum / weightSum;
+      return currentTrend + ((currentTrend - dataHistory[dataHistory.length - window]?.[field] || currentTrend) * 0.1);
+    }
+
+    // Mood Impact Score
+    function calculateMoodImpact(mobileUsage, heartRate) {
+      const baseImpact = (mobileUsage || 0) * 5 + (heartRate > 80 ? (heartRate - 80) * 2 : 0);
+      return Math.min(100, baseImpact);
+    }
+
+    // Tablet and Prescription Alerts
+    function generateAlerts(prescription) {
+      if (!prescription) return { tabletAlerts: "No prescription uploaded.", prescriptionAlerts: "No prescription uploaded." };
+      const now = new Date();
+      const start = new Date(prescription.startDate);
+      const end = new Date(start.getTime() + (parseInt(prescription.duration) * 24 * 60 * 60 * 1000));
+      const daysLeft = Math.ceil((end - now) / (24 * 60 * 60 * 1000));
+      let tabletAlerts = "No alerts.";
+      let prescriptionAlerts = "No alerts.";
+      const lastDose = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Simulate last dose
+
+      if (prescription.frequency.includes("daily") && now.getHours() > 12 && now.getHours() < 18) {
+        tabletAlerts = `Take ${prescription.dosage} of ${prescription.medication} now! Last dose was on ${lastDose.toISOString().split('T')[0]}.`;
+      } else if (daysLeft <= 3) {
+        prescriptionAlerts = `Refill ${prescription.medication} soon! Only ${daysLeft} days left.`;
+      }
+      return { tabletAlerts, prescriptionAlerts };
+    }
+
+    // Extract Prescription Details and Resolution
+    function extractPrescriptionDetails(prescription) {
+      if (!prescription) return { details: "No prescription data available.", resolution: "" };
+      const details = `
+        - Medication: ${prescription.medication}
+        - Dosage: ${prescription.dosage}
+        - Frequency: ${prescription.frequency}
+        - Duration: ${prescription.duration}
+        - Start Date: ${prescription.startDate}
+      `;
+      const resolution = `
+        - Set a daily reminder for ${prescription.frequency} to take ${prescription.medication}.
+        - Consult a doctor if side effects occur.
+        - Refill prescription ${parseInt(prescription.duration.split(' ')[0]) - 3} days before completion.
+      `;
+      return { details, resolution };
+    }
+
+    // Parse prescription from uploaded file
+    function parsePrescription(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const text = event.target.result;
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+          const prescription = {};
+          lines.forEach(line => {
+            if (line.includes("Medication:")) prescription.medication = line.split("Medication:")[1].trim();
+            if (line.includes("Dosage:")) prescription.dosage = line.split("Dosage:")[1].trim();
+            if (line.includes("Frequency:")) prescription.frequency = line.split("Frequency:")[1].trim();
+            if (line.includes("Duration:")) prescription.duration = line.split("Duration:")[1].trim();
+            if (line.includes("Start Date:")) prescription.startDate = line.split("Start Date:")[1].trim();
+          });
+          if (Object.keys(prescription).length === 5) {
+            resolve(prescription);
+          } else {
+            reject(new Error("Invalid prescription format. Expected: Medication, Dosage, Frequency, Duration, Start Date."));
+          }
+        };
+        reader.onerror = () => reject(new Error("Failed to read the file."));
+        reader.readAsText(file);
+      });
+    }
+
+    // Determine tile color based on intensity
+    function getTileClass(value, thresholds, metric) {
+      if (!thresholds || typeof value !== 'number') return 'moderate-tile';
+      const isWorseHigh = ['mobile_usage', 'stress_level', 'cardio_risk', 'systolic_bp', 'diastolic_bp', 'cognitive_load', 'mood_impact'].includes(metric);
+      if (isWorseHigh) {
+        if (value < thresholds.moderate) return 'good-tile';
+        if (value < thresholds.good) return 'moderate-tile';
+        return 'severe-tile';
+      } else {
+        if (value >= thresholds.good) return 'good-tile';
+        if (value >= thresholds.moderate) return 'moderate-tile';
+        return 'severe-tile';
+      }
+    }
+
+    // Save data and update UI
+    document.getElementById('saveData').addEventListener('click', () => {
+      const requiredFields = [
+        'steps', 'distance', 'weight', 'bmi', 'heart_rate', 'mobile_usage',
+        'water_intake', 'systolic_bp', 'diastolic_bp', 'very_active_minutes',
+        'fairly_active_minutes', 'lightly_active_minutes', 'sedentary_minutes'
+      ];
+      const missingFields = requiredFields.filter(id => !document.getElementById(id).value);
+
+      if (missingFields.length > 0) {
+        document.getElementById('error').textContent = `Please fill in all fields: ${missingFields.join(', ')}.`;
+        return;
+      }
+
+      const data = {
+        steps: parseFloat(document.getElementById('steps').value) || 0,
+        distance: parseFloat(document.getElementById('distance').value) || 0,
+        weight: parseFloat(document.getElementById('weight').value) || 0,
+        bmi: parseFloat(document.getElementById('bmi').value) || 0,
+        heart_rate: parseFloat(document.getElementById('heart_rate').value) || 0,
+        mobile_usage: parseFloat(document.getElementById('mobile_usage').value) || 0,
+        water_intake: parseFloat(document.getElementById('water_intake').value) || 0,
+        systolic_bp: parseFloat(document.getElementById('systolic_bp').value) || 0,
+        diastolic_bp: parseFloat(document.getElementById('diastolic_bp').value) || 0,
+        very_active_minutes: parseFloat(document.getElementById('very_active_minutes').value) || 0,
+        fairly_active_minutes: parseFloat(document.getElementById('fairly_active_minutes').value) || 0,
+        lightly_active_minutes: parseFloat(document.getElementById('lightly_active_minutes').value) || 0,
+        sedentary_minutes: parseFloat(document.getElementById('sedentary_minutes').value) || 0,
+        calories: predictCalories(parseFloat(document.getElementById('steps').value) || 0, parseFloat(document.getElementById('weight').value) || 0),
+        timestamp: new Date().toISOString()
+      };
+      if (!dataHistory.some(d => d.timestamp === data.timestamp)) {
+        dataHistory.push(data);
+        localStorage.setItem('healthData', JSON.stringify(dataHistory));
+        document.getElementById('error').textContent = '';
+        updateCharts(data);
+        updateTable(data);
+        updateRecommendationsAndDetails(data);
+      } else {
+        document.getElementById('error').textContent = 'Data for this timestamp already exists!';
+      }
+    });
+
+    // Handle prescription upload
+    document.getElementById('prescriptionUpload').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file && file.name.endsWith('.txt')) {
+        parsePrescription(file)
+          .then(pres => {
+            prescription = pres;
+            updatePrescriptionUI();
+          })
+          .catch(error => {
+            document.getElementById('error').textContent = error.message;
+            prescription = null;
+            updatePrescriptionUI();
+          });
+      } else {
+        document.getElementById('error').textContent = 'Please upload a .txt file.';
+        prescription = null;
+        updatePrescriptionUI();
+      }
+    });
+
+    function updateCharts(data) {
+      if (!stepsChart) {
+        const ctxSteps = document.getElementById('stepsChart').getContext('2d');
+        stepsChart = new Chart(ctxSteps, {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'Steps', data: [], borderColor: 'blue', fill: false }] },
+          options: { responsive: true }
+        });
+      }
+      if (!caloriesChart) {
+        const ctxCalories = document.getElementById('caloriesChart').getContext('2d');
+        caloriesChart = new Chart(ctxCalories, {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'Calories', data: [], borderColor: 'red', fill: false }] },
+          options: { responsive: true }
+        });
+      }
+      stepsChart.data.labels.push(data.timestamp.slice(11, 19));
+      stepsChart.data.datasets[0].data.push(data.steps);
+      caloriesChart.data.labels.push(data.timestamp.slice(11, 19));
+      caloriesChart.data.datasets[0].data.push(data.calories);
+      stepsChart.update();
+      caloriesChart.update();
+    }
+
+    function updateTable(data) {
+      const tbody = document.querySelector('#dataTable tbody');
+      const existingRow = Array.from(tbody.querySelectorAll('tr')).find(row => row.cells[0].textContent === data.timestamp);
+      if (!existingRow) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="border p-2">${data.timestamp}</td>
+          <td class="border p-2">${data.steps}</td>
+          <td class="border p-2">${data.calories?.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+        if (tbody.children.length > 5) tbody.removeChild(tbody.firstChild);
+      }
+    }
+
+    function updateRecommendationsAndDetails(data) {
+      const stress_level = Math.min(100, (data.mobile_usage || 0) / 2);
+      const activity_intensity = calculateActivityIntensity(data.very_active_minutes, data.fairly_active_minutes, data.lightly_active_minutes, data.sedentary_minutes);
+      const hydration_balance = calculateHydrationBalance(data.water_intake);
+      const cardio_risk = calculateCardioRisk(data.heart_rate, data.systolic_bp, data.diastolic_bp);
+      const sleep_quality = estimateSleepQuality(data.sedentary_minutes);
+      const cognitive_load = calculateCognitiveLoadIndex(data.mobile_usage, data.sedentary_minutes);
+      const energy_efficiency = calculateEnergyEfficiency(data.calories, data.very_active_minutes, data.fairly_active_minutes, data.lightly_active_minutes);
+      const posture_health = calculatePostureHealthScore(data.sedentary_minutes, activity_intensity);
+      const resilience_factor = calculateResilienceFactor(stress_level, sleep_quality);
+      const vitality_pulse = calculateVitalityPulse(data.heart_rate, data.water_intake, activity_intensity);
+      const mood_impact = calculateMoodImpact(data.mobile_usage, data.heart_rate);
+      const emotional_resilience = calculateEmotionalResilienceIndex(stress_level, sleep_quality, mood_impact);
+
+      // Trend Predictions
+      const trend_steps = calculateAdvancedTrendPrediction(dataHistory, 'steps');
+      const trend_calories = calculateAdvancedTrendPrediction(dataHistory, 'calories');
+      const trend_heart_rate = calculateAdvancedTrendPrediction(dataHistory, 'heart_rate');
+      const trend_stress = calculateAdvancedTrendPrediction(dataHistory, 'stress_level', 3, 0.7);
+      const trend_hydration = calculateAdvancedTrendPrediction(dataHistory, 'hydration_balance');
+
+      // Thresholds for color coding
+      const thresholds = {
+        steps: { good: 7000, moderate: 5000 },
+        distance: { good: 5, moderate: 3 },
+        calories: { good: 2000, moderate: 1800 },
+        weight: { good: 70, moderate: 75 },
+        bmi: { good: 24.9, moderate: 27 },
+        heart_rate: { good: 100, moderate: 90 },
+        mobile_usage: { good: 6, moderate: 4 },
+        stress_level: { good: 70, moderate: 50 },
+        water_intake: { good: 1.5, moderate: 1 },
+        hydration_balance: { good: 80, moderate: 50 },
+        systolic_bp: { good: 130, moderate: 120 },
+        diastolic_bp: { good: 90, moderate: 80 },
+        activity_intensity: { good: 50, moderate: 30 },
+        cardio_risk: { good: 50, moderate: 30 },
+        sleep_quality: { good: 70, moderate: 50 },
+        cognitive_load: { good: 60, moderate: 50 },
+        energy_efficiency: { good: 60, moderate: 40 },
+        posture_health: { good: 70, moderate: 50 },
+        resilience_factor: { good: 60, moderate: 40 },
+        vitality_pulse: { good: 70, moderate: 50 },
+        mood_impact: { good: 70, moderate: 50 },
+        emotional_resilience: { good: 60, moderate: 40 }
+      };
+
+      // Health Details with Dynamic Colors and Tooltips
+      const healthDetails = document.getElementById('healthDetailsRow');
+      healthDetails.innerHTML = `
+        <div class="tile ${getTileClass(data.steps, thresholds.steps, 'steps')}">
+          <div>Steps: ${data.steps.toFixed(2)}<span class="tooltip">Current step count. Maintain by walking 10,000 steps daily; improve with brisk walks.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.distance, thresholds.distance, 'distance')}">
+          <div>Distance (km): ${data.distance.toFixed(2)}<span class="tooltip">Distance covered. Maintain 5-7 km daily; improve with longer walks or runs.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.calories, thresholds.calories, 'calories')}">
+          <div>Calories: ${data.calories.toFixed(2)}<span class="tooltip">Calories burned. Maintain with balanced diet; improve with higher activity.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.weight, thresholds.weight, 'weight')}">
+          <div>Weight (kg): ${data.weight.toFixed(2)}<span class="tooltip">Current weight. Maintain with diet; improve with exercise if over target.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.bmi, thresholds.bmi, 'bmi')}">
+          <div>BMI: ${data.bmi.toFixed(2)}<span class="tooltip">Body Mass Index. Maintain 18.5-24.9; improve with diet/exercise if outside range.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.heart_rate, thresholds.heart_rate, 'heart_rate')}">
+          <div>Heart Rate (bpm): ${data.heart_rate.toFixed(2)}<span class="tooltip">Heart rate. Maintain 60-100 bpm; improve with cardio if high.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.mobile_usage, thresholds.mobile_usage, 'mobile_usage')}">
+          <div>Mobile Usage (hours): ${data.mobile_usage.toFixed(2)}<span class="tooltip">Screen time. Maintain <4 hours; improve with breaks.</span></div>
+        </div>
+        <div class="tile ${getTileClass(stress_level, thresholds.stress_level, 'stress_level')}">
+          <div>Stress Level (%): ${stress_level.toFixed(2)}<span class="tooltip">Stress level. Maintain <50%; improve with relaxation techniques.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.water_intake, thresholds.water_intake, 'water_intake')}">
+          <div>Water Intake (liters): ${data.water_intake.toFixed(2)}<span class="tooltip">Hydration. Maintain 2L; improve with regular sips.</span></div>
+        </div>
+        <div class="tile ${getTileClass(hydration_balance, thresholds.hydration_balance, 'hydration_balance')}">
+          <div>Hydration Balance (%): ${hydration_balance.toFixed(2)}<span class="tooltip">Hydration status. Maintain >80%; improve with more water.</span></div>
+        </div>
+        <div class="tile ${getTileClass(data.systolic_bp, thresholds.systolic_bp, 'systolic_bp')}">
+          <div>Blood Pressure (mmHg): ${data.systolic_bp}/${data.diastolic_bp}<span class="tooltip">BP. Maintain <120/80; improve with diet if high.</span></div>
+        </div>
+        <div class="tile ${getTileClass(activity_intensity, thresholds.activity_intensity, 'activity_intensity')}">
+          <div>Activity Intensity (%): ${activity_intensity.toFixed(2)}<span class="tooltip">Activity level. Maintain >50%; improve with exercise.</span></div>
+        </div>
+        <div class="tile ${getTileClass(cardio_risk, thresholds.cardio_risk, 'cardio_risk')}">
+          <div>Cardiovascular Risk (%): ${cardio_risk.toFixed(2)}<span class="tooltip">Heart risk. Maintain <30%; improve with cardio.</span></div>
+        </div>
+        <div class="tile ${getTileClass(sleep_quality, thresholds.sleep_quality, 'sleep_quality')}">
+          <div>Sleep Quality (%): ${sleep_quality.toFixed(2)}<span class="tooltip">Sleep health. Maintain >70%; improve with less screen time.</span></div>
+        </div>
+        <div class="tile ${getTileClass(cognitive_load, thresholds.cognitive_load, 'cognitive_load')}">
+          <div>Cognitive Load Index (%): ${cognitive_load.toFixed(2)}<span class="tooltip">Mental load. Maintain <50%; improve with breaks.</span></div>
+        </div>
+        <div class="tile ${getTileClass(energy_efficiency, thresholds.energy_efficiency, 'energy_efficiency')}">
+          <div>Energy Efficiency (%): ${energy_efficiency.toFixed(2)}<span class="tooltip">Energy use. Maintain >60%; improve with active workouts.</span></div>
+        </div>
+        <div class="tile ${getTileClass(posture_health, thresholds.posture_health, 'posture_health')}">
+          <div>Posture Health Score (%): ${posture_health.toFixed(2)}<span class="tooltip">Posture. Maintain >70%; improve with stretches.</span></div>
+        </div>
+        <div class="tile ${getTileClass(resilience_factor, thresholds.resilience_factor, 'resilience_factor')}">
+          <div>Resilience Factor (%): ${resilience_factor.toFixed(2)}<span class="tooltip">Recovery. Maintain >60%; improve with sleep.</span></div>
+        </div>
+        <div class="tile ${getTileClass(vitality_pulse, thresholds.vitality_pulse, 'vitality_pulse')}">
+          <div>Vitality Pulse (%): ${vitality_pulse.toFixed(2)}<span class="tooltip">Overall vitality. Maintain >70%; improve with lifestyle.</span></div>
+        </div>
+        <div class="tile ${getTileClass(mood_impact, thresholds.mood_impact, 'mood_impact')}">
+          <div>Mood Impact Score (%): ${mood_impact.toFixed(2)}<span class="tooltip">Mood impact. Maintain <50%; improve with less screen time.</span></div>
+        </div>
+      `;
+
+      // Recommendations
+      const recommendations = [];
+      if (data.steps < 5000) recommendations.push("Increase daily steps to at least 10,000 for better health.");
+      if (data.bmi > 24.9) recommendations.push("Consider a balanced diet and exercise to manage BMI; aim for 18.5-24.9.");
+      if (data.calories < 1800) recommendations.push("Increase calorie intake; aim for 2000-2500 based on activity.");
+      if (data.heart_rate > 100) recommendations.push("Monitor heart rate; consult a doctor if high persistently; try cardio.");
+      if (stress_level > 50) recommendations.push("Reduce mobile usage to below 5 hours; try relaxation techniques like meditation.");
+      if (stress_level > 70) recommendations.push("Take a digital detox day to lower stress levels significantly.");
+      if (hydration_balance < 70) recommendations.push("Increase water intake to 2 liters daily; set reminders to drink.");
+      if (cardio_risk > 50) recommendations.push("Consult a doctor for cardiovascular health check; reduce salt intake.");
+      if (sleep_quality < 50) recommendations.push("Reduce sedentary time; aim for better sleep hygiene with a consistent schedule.");
+      if (cognitive_load > 60) recommendations.push("Take breaks every hour to reduce cognitive overload from screen time.");
+      if (posture_health < 50) recommendations.push("Incorporate posture exercises like yoga or ergonomic adjustments.");
+      if (energy_efficiency < 40) recommendations.push("Enhance workouts with high-intensity intervals to boost efficiency.");
+      if (resilience_factor < 40) recommendations.push("Improve resilience with better sleep and stress management techniques.");
+      if (vitality_pulse < 50) recommendations.push("Boost vitality with balanced nutrition, hydration, and regular exercise.");
+
+      document.getElementById('recommendations').innerHTML = recommendations.map(rec => `<div class="list-item">${rec}</div>`).join('');
+
+      // Trend Predictions
+      const trendPredictions = document.getElementById('trendPredictions');
+      trendPredictions.innerHTML = `
+        <div class="list-item">Steps Trend: ${trend_steps.toFixed(2)} (next 3-day estimate)</div>
+        <div class="list-item">Calories Trend: ${trend_calories.toFixed(2)} (next 3-day estimate)</div>
+        <div class="list-item">Heart Rate Trend: ${trend_heart_rate.toFixed(2)} bpm (next 3-day estimate)</div>
+        <div class="list-item">Stress Level Trend: ${trend_stress.toFixed(2)}% (next 3-day estimate)</div>
+        <div class="list-item">Hydration Balance Trend: ${trend_hydration.toFixed(2)}% (next 3-day estimate)</div>
+      `;
+
+      updatePrescriptionUI();
+    }
+
+    function updatePrescriptionUI() {
+      const alerts = generateAlerts(prescription);
+      document.getElementById('tabletAlerts').textContent = alerts.tabletAlerts;
+      document.getElementById('prescriptionAlerts').textContent = alerts.prescriptionAlerts;
+
+      if (prescription) {
+        const prescriptionText = `Prescription: Take ${prescription.dosage} of ${prescription.medication} ${prescription.frequency} for ${prescription.duration}, starting ${prescription.startDate}.`;
+        document.getElementById('prescriptionText').textContent = prescriptionText;
+        const prescriptionInfo = extractPrescriptionDetails(prescription);
+        document.getElementById('prescriptionDetails').innerHTML = `
+          <strong>Details:</strong><br>${prescriptionInfo.details}<br>
+          <strong>Resolution Steps:</strong><br>${prescriptionInfo.resolution}
+        `;
+      } else {
+        document.getElementById('prescriptionText').textContent = "No prescription uploaded.";
+        document.getElementById('prescriptionDetails').innerHTML = "";
+      }
+    }
+
+    // Load existing data on page load
+    if (dataHistory.length > 0) {
+      dataHistory.forEach(data => {
+        updateCharts(data);
+        updateTable(data);
+        updateRecommendationsAndDetails(data);
+      });
+    }
+  </script>
+</body>
+</html>

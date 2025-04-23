@@ -1,0 +1,5 @@
+Medication: Ibuprofen
+Dosage: 200mg
+Frequency: Twice daily
+Duration: 7 days
+Start Date: 2025-04-20
